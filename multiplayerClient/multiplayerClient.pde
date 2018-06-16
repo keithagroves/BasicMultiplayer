@@ -10,6 +10,7 @@ Thing player;
 String dataIn;
 void setup() {
   size(500, 500);
+  
   player = new Thing(20, 20, (int)random(1000));
   playerJSON = new JSONObject();
   thingToJSON(player);
@@ -18,9 +19,16 @@ void setup() {
 }
 
 void draw() {
+  background(0);
   if (myClient.available() > 0) { 
     dataIn = myClient.readString();
-    JSONObject json = parseJSONObject(dataIn);
+    JSONObject json = null;
+    try{
+     json = parseJSONObject(dataIn);
+    }
+    catch(Exception e){
+      println("Crash");
+    }
     jsonToThings(json);
   }
   rect(player.x, player.y, 10,10);
