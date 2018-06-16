@@ -15,9 +15,11 @@ void draw() {
   if (thisClient !=null) {
     String whatClientSaid = thisClient.readString();
     if (whatClientSaid != null) {
+      if(whatClientSaid.length() > 0){
       println(thisClient.ip() + "t" + whatClientSaid);
       addToMap(parseJSONObject(whatClientSaid));
       myServer.write(mapToJson(things).toString());
+    }
     }
   }
 }
