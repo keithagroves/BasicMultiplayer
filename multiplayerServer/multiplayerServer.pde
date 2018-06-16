@@ -15,10 +15,16 @@ void draw() {
   if (thisClient !=null) {
     String whatClientSaid = thisClient.readString();
     if (whatClientSaid != null) {
-      if(whatClientSaid.length() > 0){
+      if(whatClientSaid.contains("}") && whatClientSaid.contains("}")){
       println(thisClient.ip() + "t" + whatClientSaid);
-      addToMap(parseJSONObject(whatClientSaid));
+      try{
+        JSONObject message=  parseJSONObject(whatClientSaid);
+         addToMap(message);
       myServer.write(mapToJson(things).toString());
+      } catch(Exception e) {
+        println("error");
+      }
+     
     }
     }
   }
