@@ -62,9 +62,13 @@ JSONObject thingToJSON(Thing thing) {
 }
 
 void jsonToThings(JSONObject json) {
+  if(json!=null){
   JSONArray values = json.getJSONArray("things");
+  if(values!=null){
   for (int i = 0; i < values.size(); i++) {
     addToMap(values.getJSONObject(i));
+  }
+  }
   }
 }
 
