@@ -31,8 +31,10 @@ void draw() {
     }
     jsonToThings(json);
   }
+  fill(0,115,255);
   rect(player.x, player.y, 10,10);
   for (Thing t : things.values()) {
+      fill(255,115,0);
     rect(t.x, t.y, 10, 10);
   }
 }
@@ -40,13 +42,13 @@ void draw() {
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
-      player.y--;
+      player.y-=10;
     } else if (keyCode == DOWN) {
-      player.y++;
+      player.y+=10;
     } else if (keyCode == LEFT) {
-      player.x--;
+      player.x-=10;
     } else if (keyCode == RIGHT) {
-      player.x++;
+      player.x+=10;
     }
   }
   println(thingToJSON(player).toString());
