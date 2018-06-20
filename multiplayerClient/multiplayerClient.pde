@@ -11,7 +11,7 @@ void setup() {
   size(500, 500);
 
 
-  myClient = new Client(this, "localhost", 5204); 
+  myClient = new Client(this, "localhost", 5204);
 }
 
 void draw() {
@@ -27,30 +27,30 @@ void draw() {
       player = updateMap(message);
     }
   }
-  if(player != null){
-  fill(0, 115, 255);
-  rect(player.x, player.y, 10, 10);
-  for (Thing t : things.values()) {
-    fill(255, 115, 0);
-    rect(t.x, t.y, 10, 10);
-  }
+  if (player != null) {
+    fill(0, 115, 255);
+    rect(player.x, player.y, 10, 10);
+    for (Thing t : things.values()) {
+      fill(255, 115, 0);
+      rect(t.x, t.y, 10, 10);
+    }
   }
 }
 
 void keyPressed() {
-  if(player != null){
-  if (key == CODED) {
-    if (keyCode == UP) {
-      player.y-=10;
-    } else if (keyCode == DOWN) {
-      player.y+=10;
-    } else if (keyCode == LEFT) {
-      player.x-=10;
-    } else if (keyCode == RIGHT) {
-      player.x+=10;
+  if (player != null) {
+    if (key == CODED) {
+      if (keyCode == UP) {
+        player.y-=10;
+      } else if (keyCode == DOWN) {
+        player.y+=10;
+      } else if (keyCode == LEFT) {
+        player.x-=10;
+      } else if (keyCode == RIGHT) {
+        player.x+=10;
+      }
     }
-  }
-  myClient.write(thingToBytes(player));
+    myClient.write(thingToBytes(player));
   }
 }
 
