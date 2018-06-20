@@ -2,44 +2,43 @@
 
 import processing.net.*;
 HashMap<Integer, Thing>things = new HashMap<Integer, Thing>();
-
-
+static final int UPDATE = 1;
+static final int PACKET_ID = 1;
+static final int JOIN = 0;
 Client myClient; 
-JSONObject playerJSON;
 Thing player;
-String dataIn;
 void setup() {
   size(500, 500);
-  
-  player = new Thing(20, 20, (int)random(1000));
-  playerJSON = new JSONObject();
-  thingToJSON(player);
+
+
   myClient = new Client(this, "localhost", 5204); 
-  myClient.write(thingToJSON(player).toString());
 }
 
 void draw() {
   background(0);
+
   if (myClient.available() > 0) { 
-    dataIn = myClient.readString();
-    JSONObject json = null;
-    try{
-     json = parseJSONObject(dataIn);
+    byte [] message = new byte[10];
+    myClient.readBytes(message);
+
+    if (message[0] == UPDATE)
+      updateMap(message);
+    else if (message[0] == JOIN && player == null) {
+      player = updateMap(message);
     }
-    catch(Exception e){
-      println("Crash");
-    }
-    jsonToThings(json);
   }
-  fill(0,115,255);
-  rect(player.x, player.y, 10,10);
+  if(player != null){
+  fill(0, 115, 255);
+  rect(player.x, player.y, 10, 10);
   for (Thing t : things.values()) {
-      fill(255,115,0);
+    fill(255, 115, 0);
     rect(t.x, t.y, 10, 10);
+  }
   }
 }
 
 void keyPressed() {
+  if(player != null){
   if (key == CODED) {
     if (keyCode == UP) {
       player.y-=10;
@@ -51,30 +50,59 @@ void keyPressed() {
       player.x+=10;
     }
   }
-  println(thingToJSON(player).toString());
-  myClient.write(thingToJSON(player).toString());
-}
-
-JSONObject thingToJSON(Thing thing) {
-  JSONObject playerJSON = new JSONObject();
-  playerJSON.setInt("id", thing.id);
-  playerJSON.setInt("x", thing.getX());
-  playerJSON.setInt("y", thing.getY());
-  return playerJSON;
-}
-
-void jsonToThings(JSONObject json) {
-  if(json!=null){
-  JSONArray values = json.getJSONArray("things");
-  if(values!=null){
-  for (int i = 0; i < values.size(); i++) {
-    addToMap(values.getJSONObject(i));
-  }
-  }
+  myClient.write(thingToBytes(player));
   }
 }
 
-void addToMap(JSONObject json) {
-  if (json.getInt("id") != player.id)
-    things.put(json.getInt("id"), new Thing(json.getInt("x"), json.getInt("y"), json.getInt("id")));
+byte [] thingToBytes(Thing player) {
+  byte[] x = toByteArray(player.x);
+  byte[] y = toByteArray(player.y);
+  byte[] message = new byte[10];
+  message[0] = UPDATE;
+  message[1] = (byte)player.id;
+  message[2] = x[0];
+  message[3] = x[1];
+  message[4] = x[2];
+  message[5] = x[3];
+  message[6] = y[0];
+  message[7] = y[1];
+  message[8] = y[2];
+  message[9] = y[3];
+
+  printBytes(message);
+  return message;
+}
+
+byte[] toByteArray(int value) {
+  return new byte[] { 
+    (byte)(value >> 24), 
+    (byte)(value >> 16), 
+    (byte)(value >> 8), 
+    (byte)value };
+}
+
+Thing updateMap(byte [] packet) {
+  if (things.get((int)packet[PACKET_ID]) != null) {
+    things.get((int)packet[PACKET_ID]).x = (packet[2]<<24)&0xff000000|
+      (packet[3]<<16)&0x00ff0000|
+      (packet[4]<< 8)&0x0000ff00|
+      (packet[5]<< 0)&0x000000ff;
+    things.get((int)packet[PACKET_ID]).y = (packet[6]<<24)&0xff000000|
+      (packet[7]<<16)&0x00ff0000|
+      (packet[8]<< 8)&0x0000ff00|
+      (packet[9]<< 0)&0x000000ff;
+    return things.get((int)packet[PACKET_ID]);
+  } else {
+    Thing newPlayer = new Thing(0, 0, (int)packet[1]);
+    things.put((int)packet[1], newPlayer);
+    updateMap(packet);
+    return newPlayer;
+  }
+}
+
+void printBytes(byte[] message) {
+  for (int j=0; j<message.length; j++) {
+    System.out.format("%02X ", message[j]);
+  }
+  System.out.println();
 }
