@@ -1,99 +1,137 @@
 //Client
-
 import processing.net.*;
-HashMap<Integer, Thing>things = new HashMap<Integer, Thing>();
-static final int UPDATE = 1;
+HashMap<Integer, ArrayList<Thing>>things = new HashMap<Integer, ArrayList<Thing>>();
+
+class Message {
+  static final int JOIN = 0;
+  static final int UPDATE = 1;
+}
+
 static final int PACKET_ID = 1;
-static final int JOIN = 0;
+static final int PACKET_SIZE = 0;
+
 Client myClient; 
+
+static final int U = 0;
+static final int D = 1;
+static final int L = 2;
+static final int R = 3;
+int dir = D;
+int count = 0;
+
+//Your player
 Thing player;
+
+ArrayList<Thing>tail = new ArrayList<Thing>();
+
 void setup() {
   size(500, 500);
-
-
   myClient = new Client(this, "localhost", 5204);
 }
 
 void draw() {
   background(0);
-
   if (myClient.available() > 0) { 
     byte [] message = new byte[10];
     myClient.readBytes(message);
-
-    if (message[0] == UPDATE)
+    switch(message[0]) {
+    case Message.UPDATE:
       updateMap(message);
-    else if (message[0] == JOIN && player == null) {
-      player = updateMap(message);
+      break;
+    case Message.JOIN:
+      if (player == null) {
+        //player = updateMap(message);
+      }
+      break;
+    }
+    if (player != null) {
+
+      move();
+      drawPlayer();
+      drawSnakes();
     }
   }
-  if (player != null) {
-    fill(0, 115, 255);
-    rect(player.x, player.y, 10, 10);
-    for (Thing t : things.values()) {
-      fill(255, 115, 0);
+}
+
+
+void drawPlayer() {
+  fill(0, 115, 255);
+  rect(player.x, player.y, 10, 10);
+}
+
+void drawSnakes() {
+  for (ArrayList<Thing> s : things.values()) {
+    fill(255, 115, 0);
+    for (Thing t : s)
       rect(t.x, t.y, 10, 10);
-    }
   }
 }
 
 void keyPressed() {
   if (player != null) {
     if (key == CODED) {
-      if (keyCode == UP) {
-        player.y-=10;
-      } else if (keyCode == DOWN) {
-        player.y+=10;
-      } else if (keyCode == LEFT) {
-        player.x-=10;
-      } else if (keyCode == RIGHT) {
-        player.x+=10;
+      if (keyCode == UP && dir!=U && dir!=D) {
+        dir = U;
+        myClient.write(thingToBytes(player));
+      } else if (keyCode == DOWN && dir!=D && dir!=U) {
+        dir = D;
+        myClient.write(thingToBytes(player));
+      } else if (keyCode == LEFT&& dir!=L && dir!=R) {
+        dir = L;
+        myClient.write(thingToBytes(player));
+      } else if (keyCode == RIGHT && dir!=R && dir!=L) {
+        dir = R;
+        myClient.write(thingToBytes(player));
       }
     }
-    myClient.write(thingToBytes(player));
   }
 }
 
-byte [] thingToBytes(Thing player) {
-  byte[] x = toByteArray(player.x);
-  byte[] y = toByteArray(player.y);
-  byte[] message = new byte[10];
-  message[0] = UPDATE;
-  message[1] = (byte)player.id;
-  message[2] = x[0];
-  message[3] = x[1];
-  message[4] = x[2];
-  message[5] = x[3];
-  message[6] = y[0];
-  message[7] = y[1];
-  message[8] = y[2];
-  message[9] = y[3];
+void move() {
+  if (count++%6==0) {
+    switch(dir) {
+    case U:
+      player.y-=10;
+      break;
+    case D:
+      player.y+=10;
+      break;
+    case L:
+      player.x-=10;
+      break;
+    case R:
+      player.x+=10;
+      break;
+    }
+  }
+}
 
+byte getPACKET_SIZE(byte[] message) {
+  return message[PACKET_SIZE];
+}
+
+byte [] thingToBytes(Thing player) {
+  byte[] message = new byte[10];
+  message[0] = Message.UPDATE;
+  message[1] = (byte)player.id;
+  message[3] = (byte)(player.x/10);
+  message[4] = (byte)(player.y/10);
   printBytes(message);
   return message;
 }
 
-byte[] toByteArray(int value) {
-  return new byte[] { 
-    (byte)(value >> 24), 
-    (byte)(value >> 16), 
-    (byte)(value >> 8), 
-    (byte)value };
-}
 
-Thing updateMap(byte [] packet) {
-  if (things.get((int)packet[PACKET_ID]) != null) {
-    things.get((int)packet[PACKET_ID]).x = (packet[2]<<24)&0xff000000|
-      (packet[3]<<16)&0x00ff0000|
-      (packet[4]<< 8)&0x0000ff00|
-      (packet[5]<< 0)&0x000000ff;
-    things.get((int)packet[PACKET_ID]).y = (packet[6]<<24)&0xff000000|
-      (packet[7]<<16)&0x00ff0000|
-      (packet[8]<< 8)&0x0000ff00|
-      (packet[9]<< 0)&0x000000ff;
+ArrayList<Thing> updateMap(byte [] packet) {
+  ArrayList<Thing> snake = things.get((int)packet[PACKET_ID]);
+  if (snake != null) {
+    for (int i = 0; i < snake.size(); i++) {
+      snake.get(i).x = packet[3 +(2*i)]*10;
+      snake.get(i).y = packet[4 +(2*i)]*10;
+    }
     return things.get((int)packet[PACKET_ID]);
   } else {
-    Thing newPlayer = new Thing(0, 0, (int)packet[1]);
+    ArrayList<Thing> newPlayer = new ArrayList<Thing>();
+    newPlayer.add(new Thing(0, 0, (int)packet[1]));
     things.put((int)packet[1], newPlayer);
     updateMap(packet);
     return newPlayer;
