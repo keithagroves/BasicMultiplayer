@@ -3,12 +3,22 @@ import processing.net.*;
 HashMap<Integer, ArrayList<Thing>>things = new HashMap<Integer, ArrayList<Thing>>();
 
 class Message {
-  static final int JOIN = 0;
-  static final int UPDATE = 1;
+  static final int ID_INDEX = 0;
+  static final int X_INDEX = 1;
+  static final int Y_INDEX = 2;
+  static final int DIR_INDEX =1;
 }
 
-static final int PACKET_ID = 1;
-static final int PACKET_SIZE = 0;
+class Header {
+  static final int SIZE_INDEX = 0;
+  static final int TYPE_INDEX = 1;
+}
+
+class Type{
+  static final int JOIN = 0;
+  static final int UPDATE = 1;
+  static final int DIRECTION = 2;
+}
 
 Client myClient; 
 
@@ -16,7 +26,7 @@ static final int U = 0;
 static final int D = 1;
 static final int L = 2;
 static final int R = 3;
-int dir = D;
+int dir = U;
 int count = 0;
 
 //Your player
@@ -32,25 +42,38 @@ void setup() {
 void draw() {
   background(0);
   if (myClient.available() > 0) { 
-    byte [] message = new byte[10];
+    byte [] header = new byte[2];
+    myClient.readBytes(header);
+    printBytes(header);
+    byte [] message = new byte[header[Header.SIZE_INDEX]];
     myClient.readBytes(message);
-    switch(message[0]) {
-    case Message.UPDATE:
+    printBytes(message);
+    switch(header[Header.TYPE_INDEX]) {
+    case Type.UPDATE:
       updateMap(message);
       break;
-    case Message.JOIN:
+    case Type.JOIN:
       if (player == null) {
-        //player = updateMap(message);
+        println("creating player");
+            printBytes(message);
+
+        tail = updateMap(message);
+        player= tail.get(0);
+        println(player.x);
+      }
+      else{
+         updateMap(message); 
       }
       break;
     }
-    if (player != null) {
+   
+  }
+   if (player != null) {
 
       move();
       drawPlayer();
-      drawSnakes();
+      //drawSnakes();
     }
-  }
 }
 
 
@@ -72,19 +95,31 @@ void keyPressed() {
     if (key == CODED) {
       if (keyCode == UP && dir!=U && dir!=D) {
         dir = U;
-        myClient.write(thingToBytes(player));
+        sendDirection();
       } else if (keyCode == DOWN && dir!=D && dir!=U) {
         dir = D;
-        myClient.write(thingToBytes(player));
+        sendDirection();
       } else if (keyCode == LEFT&& dir!=L && dir!=R) {
         dir = L;
-        myClient.write(thingToBytes(player));
+        sendDirection();
       } else if (keyCode == RIGHT && dir!=R && dir!=L) {
         dir = R;
-        myClient.write(thingToBytes(player));
+        sendDirection();
       }
     }
   }
+}
+
+void sendDirection(){
+   byte[]message = new byte[2];
+   message[Message.ID_INDEX] = (byte)player.id;
+   message[Message.DIR_INDEX] = (byte)dir;
+   byte[] header = new byte[2];
+   header[Header.SIZE_INDEX] = (byte)message.length;
+   header[Header.TYPE_INDEX] = Type.DIRECTION;
+   printBytes(header);
+   myClient.write(header);
+   myClient.write(message);
 }
 
 void move() {
@@ -106,33 +141,35 @@ void move() {
   }
 }
 
-byte getPACKET_SIZE(byte[] message) {
-  return message[PACKET_SIZE];
-}
 
-byte [] thingToBytes(Thing player) {
-  byte[] message = new byte[10];
-  message[0] = Message.UPDATE;
-  message[1] = (byte)player.id;
-  message[3] = (byte)(player.x/10);
-  message[4] = (byte)(player.y/10);
+byte [] thingToBytes(ArrayList<Thing> player) {
+  byte[] message = new byte[player.size()*2+1];
+  message[Message.ID_INDEX] = (byte)player.get(0).id;
+  for(int i = 0; i < player.size(); i++){
+    message[Message.X_INDEX+(i*2)] = (byte)(player.get(i).x/10);
+    message[Message.Y_INDEX + (i*2)] = (byte)(player.get(i).y/10);
+  }
   printBytes(message);
   return message;
 }
 
 
 ArrayList<Thing> updateMap(byte [] packet) {
-  ArrayList<Thing> snake = things.get((int)packet[PACKET_ID]);
+  printBytes(packet);
+  int id = (int)packet[Message.ID_INDEX];
+  ArrayList<Thing> snake = things.get(id);
   if (snake != null) {
-    for (int i = 0; i < snake.size(); i++) {
-      snake.get(i).x = packet[3 +(2*i)]*10;
-      snake.get(i).y = packet[4 +(2*i)]*10;
+    things.put(id,new ArrayList<Thing>());
+    snake = things.get(id);
+    for (int i = 1; i < packet.length-1; i++) {
+      snake.add(new Thing(packet[i]*10, packet[i+1]*10, id));
+      println("adding snake at "+ packet[i]*10 + " and " + packet[i+1]*10);
     }
-    return things.get((int)packet[PACKET_ID]);
+    return snake;
   } else {
     ArrayList<Thing> newPlayer = new ArrayList<Thing>();
-    newPlayer.add(new Thing(0, 0, (int)packet[1]));
-    things.put((int)packet[1], newPlayer);
+    newPlayer.add(new Thing(packet[Message.X_INDEX]*10, packet[Message.Y_INDEX]*10, (int)packet[Message.ID_INDEX]));
+    things.put((int)packet[Message.ID_INDEX], newPlayer);
     updateMap(packet);
     return newPlayer;
   }
