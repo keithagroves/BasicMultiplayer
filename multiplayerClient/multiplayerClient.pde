@@ -1,5 +1,6 @@
 //Client
 import processing.net.*;
+import javax.swing.JOptionPane;
 HashMap<Integer, ArrayList<Thing>>snakes = new HashMap<Integer, ArrayList<Thing>>();
 HashMap<Integer, Integer>directions = new HashMap<Integer, Integer>();
 HashMap<Integer, Integer>snakeSize = new HashMap<Integer, Integer>();
@@ -50,7 +51,7 @@ int foodX;
 int foodY;
 void setup() {
   size(500, 500);
-  myClient = new Client(this, "localhost", 5204);
+  myClient = new Client(this, JOptionPane.showInputDialog("Host"), 5204);
 }
 
 void draw() {
