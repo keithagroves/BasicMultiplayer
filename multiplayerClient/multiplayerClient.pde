@@ -26,11 +26,10 @@ class Header {
 }
 
 class Type {
-  static final byte JOIN = 0;
+  static final byte JOIN = 8;
   static final byte UPDATE = 1;
   static final byte DIRECTION = 2;
   static final byte FOOD = 3;
-  static final byte COUNT = 4;
   static final byte POSITION = 5;
 }
 
@@ -40,7 +39,6 @@ static final int U = 0;
 static final int D = 1;
 static final int L = 2;
 static final int R = 3;
-//int dir = U;
 int count = 0;
 
 //Your player
@@ -51,7 +49,7 @@ int foodX;
 int foodY;
 void setup() {
   size(500, 500);
-  myClient = new Client(this, JOptionPane.showInputDialog("Host"), 5204);
+  myClient = new Client(this, "localhost", 5204);
 }
 
 void draw() {
@@ -59,11 +57,9 @@ void draw() {
   if (myClient.available() > 0) { 
     byte [] header = new byte[2];
     myClient.readBytes(header);
-    //printBytes(header);
     if (header[Header.SIZE_INDEX]>0) {
       byte [] message = new byte[header[Header.SIZE_INDEX]];
       myClient.readBytes(message);
-      //printBytes(message);
       switch(header[Header.TYPE_INDEX]) {
       case Type.UPDATE:
         updatePosition(message);
@@ -71,8 +67,6 @@ void draw() {
       case Type.JOIN:
         if (myPlayer == null) {
           println("creating player");
-          //printBytes(message);
-
           tail = createPlayer(message);
           myPlayer= tail.get(0);
           println(myPlayer.x);
@@ -82,9 +76,6 @@ void draw() {
         break;
       case Type.FOOD:
         updateFood(message);
-        break;
-      case Type.COUNT:
-        updateCount(message);
         break;
       }
     }
@@ -105,9 +96,6 @@ void updateFood(byte[] message) {
   snakeSize.put(id, size);
 }
 
-void updateCount(byte[] message) {
-  count = message[0];
-}
 
 
 
@@ -173,19 +161,15 @@ void move() {
       switch(directions.get(id)) {
       case U:
         snake.add(0, new Thing(p.x, p.y-10, p.id));
-        //p.y-=10;
         break;
       case D:
         snake.add(0, new Thing(p.x, p.y+10, p.id));
-        //p.y+=10;
         break;
       case L:
         snake.add(0, new Thing(p.x-10, p.y, p.id));
-        //p.x-=10;
         break;
       case R:
         snake.add(0, new Thing(p.x+10, p.y, p.id));
-        //p.x+=10;
         break;
       }
       while (snake.size() > snakeSize.get(id))
@@ -214,10 +198,13 @@ ArrayList<Thing> updatePosition(byte[] packet) {
   if (snake ==null) {
     snake = createPlayer(packet);
   } else {
-    snake.clear();
-    //println("packet size"+ packet.length);
     for (int i = 0; i < packet.length-2; i+=2) {
-      snake.add(new Thing( packet[Message.X_INDEX+i]*10, packet[Message.Y_INDEX+i]*10, id));
+      if(snake.get(i/2) == null){
+        snake.add(new Thing( packet[Message.X_INDEX+i]*10, packet[Message.Y_INDEX+i]*10, id));
+      } else {
+       snake.get(i/2).x =  packet[Message.X_INDEX+i]*10;
+       snake.get(i/2).y =  packet[Message.Y_INDEX+i]*10;
+      }
     }
   }
   return snake;
@@ -234,18 +221,6 @@ ArrayList<Thing> createPlayer(byte [] packet) {
   directions.put(id, U);
   return newPlayer;
 }
-
-//ArrayList<Thing> updatePlayer(byte [] packet) {
-//  int id = (int)packet[Message.ID_INDEX];
-//  ArrayList<Thing> snake = snakes.get(id);
-//  directions.put(id, U);
-//  snake = snakes.get(id);
-//  for (int i = 0; i < packet.length-1; i++) {
-//    snake.add(new Thing(packet[i]*10, packet[i+1]*10, id));
-//    println("adding snake at "+ packet[i]*10 + " and " + packet[i+1]*10);
-//  }
-//  return snake;
-//}
 
 void printBytes(byte[] message) {
   for (int j=0; j<message.length; j++) {
