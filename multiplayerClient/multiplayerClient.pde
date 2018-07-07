@@ -57,7 +57,8 @@ void draw() {
   if (myClient.available() > 0) { 
     byte [] header = new byte[2];
     myClient.readBytes(header);
-    if (header[Header.SIZE_INDEX]>0) {
+    println("available:"+ myClient.available() )
+;    if (myClient.available() >= header[Header.SIZE_INDEX]) {
       byte [] message = new byte[header[Header.SIZE_INDEX]];
       myClient.readBytes(message);
       switch(header[Header.TYPE_INDEX]) {
@@ -78,6 +79,9 @@ void draw() {
         updateFood(message);
         break;
       }
+    } else {
+      myClient.clear();
+      println("INVALID PACKET SIZE");  
     }
   }
   if (myPlayer != null) {
@@ -106,7 +110,6 @@ void drawFood() {
 
 void drawPlayer() {
   fill(0, 115, 255);
-  //println(snakes.get(myPlayer.id).size());
   for (Thing p : snakes.get(myPlayer.id))
     rect(p.x, p.y, 10, 10);
 }
@@ -114,9 +117,10 @@ void drawPlayer() {
 void drawSnakes() {
   for (ArrayList<Thing> s : snakes.values()) {
     fill(255, 115, 0);
-    for (Thing t : s) {
-      if (t!=myPlayer)
+    if (s!=tail) {
+      for (Thing t : s) {
         rect(t.x, t.y, 10, 10);
+      }
     }
   }
 }
@@ -199,12 +203,14 @@ ArrayList<Thing> updatePosition(byte[] packet) {
     snake = createPlayer(packet);
   } else {
     for (int i = 0; i < packet.length-2; i+=2) {
-      if(snake.get(i/2) == null){
+       if(i/2<snake.size()){
+      if (snake.get(i/2) == null) {
         snake.add(new Thing( packet[Message.X_INDEX+i]*10, packet[Message.Y_INDEX+i]*10, id));
       } else {
-       snake.get(i/2).x =  packet[Message.X_INDEX+i]*10;
-       snake.get(i/2).y =  packet[Message.Y_INDEX+i]*10;
+        snake.get(i/2).x =  packet[Message.X_INDEX+i]*10;
+        snake.get(i/2).y =  packet[Message.Y_INDEX+i]*10;
       }
+       }
     }
   }
   return snake;
@@ -212,6 +218,7 @@ ArrayList<Thing> updatePosition(byte[] packet) {
 
 //create new player
 ArrayList<Thing> createPlayer(byte [] packet) {
+  println("creating Player");
   int id = (int)packet[Message.ID_INDEX];
   println("id:"+id);
   snakeSize.put(id, 10);

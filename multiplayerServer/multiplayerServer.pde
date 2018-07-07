@@ -71,34 +71,49 @@ void drawFood() {
 
 void drawSnakes() {
   for (ArrayList<Thing> s : snakes.values()) {
-    //updatePosition((byte)s.get(0).id);
     fill(255, 115, 0);
     for (Thing t : s)
       rect(t.x, t.y, 10, 10);
   }
 }
 
+byte[] readHeader(Client thisClient) {
+  byte[] header = new byte[Header.LENGTH]; 
+  thisClient.readBytes(header);
+  return header;
+}
+
+void updateDirection(Client thisClient, byte[]header) {
+  byte[] message = new byte[header[Header.SIZE_INDEX]];
+  if (thisClient.available() == header[Header.SIZE_INDEX]) {
+    thisClient.readBytes(message);
+    if (message.length > 1) {
+      updateDirection((int)message[0], (int)message[1]);
+    }
+  } else {
+    thisClient.clear();
+    println("ERROR: INVALID MESSAGE SIZE");
+  }
+}
 
 void protocol() {
   Client thisClient = myServer.available();
+
   if (thisClient !=null) {
-    byte[] header = new byte[Header.LENGTH]; 
-    thisClient.readBytes(header);
-    if (header[Header.TYPE_INDEX] ==Type.DIRECTION ) {
-      byte[] message = new byte[header[Header.SIZE_INDEX]];
-      thisClient.readBytes(message);
-      if (message.length > 1) {
-        updateDirection((int)message[0], (int)message[1]);
+    if (thisClient.available() >0) {
+      byte[] header = readHeader(thisClient);
+      if (header[Header.TYPE_INDEX] ==Type.DIRECTION ) {
+        updateDirection(thisClient, header);
+      } else if (header[Header.TYPE_INDEX] ==Type.END ) {
+        byte[] message = new byte[header[Header.SIZE_INDEX]];
+        thisClient.readBytes(message);
+        int id = message[Message.ID_INDEX];
+        snakes.remove(id);
+        directions.remove(id);
+        snakeSize.remove(id);
+        println(thisClient.ip() + "t has been disconnected");
+        myServer.disconnect(thisClient);
       }
-    } else if (header[Header.TYPE_INDEX] ==Type.END ) {
-      byte[] message = new byte[header[Header.SIZE_INDEX]];
-      thisClient.readBytes(message);
-      int id = message[Message.ID_INDEX];
-      snakes.remove(id);
-      directions.remove(id);
-      snakeSize.remove(id);
-      println(thisClient.ip() + "t has been disconnected");
-      myServer.disconnect(thisClient);
     }
   }
 }
@@ -126,11 +141,11 @@ void serverEvent(Server someServer, Client someClient) {
   header[Header.SIZE_INDEX] = (byte) message.length;
 
   // Write all data for players positions and the current count
-  someClient.write(header);
-  someClient.write(message);
+  myServer.write(header);
+  myServer.write(message);
   foodUpdate(message[Message.ID_INDEX]);
-  //updateCount();
-  for (ArrayList<Thing> snake : snakes.values()) {
+  for (int id: snakes.keySet()) {
+    updatePosition((byte)id);
   }
 }
 
@@ -184,14 +199,13 @@ void move() {
       if (snake.size() > snakeSize.get(id))
         snake.remove(snake.size()-1);
       if (update) {
-        println("id:" + id);
+        //println("id:" + id);
         updatePosition((byte)id);
         update = false;
         move();
         break;
       }
     }
-    
   }
 }
 byte [] thingToBytes(ArrayList<Thing> player) {
@@ -239,10 +253,10 @@ void checkSnakeCollisions() {
 void disconnectEvent(Client thisClient) {
   print("Server Says:  ");
   println(thisClient.ip() + "t has been disconnected");
-  int id = ipId.get(thisClient.ip());
-  snakes.remove(id);
-  directions.remove(id);
-  snakeSize.remove(id);
+  //int id = ipId.get(thisClient.ip());
+  //snakes.remove(id);
+  //directions.remove(id);
+  //snakeSize.remove(id);
   println(thisClient.ip() + "t has been deleted");
 }
 
