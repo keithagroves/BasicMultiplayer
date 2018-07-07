@@ -49,7 +49,7 @@ int foodX;
 int foodY;
 void setup() {
   size(500, 500);
-  myClient = new Client(this, "localhost", 5204);
+  myClient = new Client(this, "192.168.7.86", 5204);
 }
 
 void draw() {
@@ -58,7 +58,7 @@ void draw() {
     byte [] header = new byte[2];
     myClient.readBytes(header);
     println("available:"+ myClient.available() )
-;    if (myClient.available() >= header[Header.SIZE_INDEX]) {
+;    if (myClient.available() >= header[Header.SIZE_INDEX] && header[Header.SIZE_INDEX] > 0) {
       byte [] message = new byte[header[Header.SIZE_INDEX]];
       myClient.readBytes(message);
       switch(header[Header.TYPE_INDEX]) {
