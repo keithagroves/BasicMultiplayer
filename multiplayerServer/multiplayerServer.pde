@@ -1,43 +1,37 @@
 import processing.net.*;
-HashMap<Integer, ArrayList<Thing>>snakes = new HashMap<Integer, ArrayList<Thing>>();
-HashMap<Integer, Integer>directions = new HashMap<Integer, Integer>();
-HashMap<Integer, Integer>snakeSize = new HashMap<Integer, Integer>();
-HashMap<String, Integer>ipId= new HashMap<String, Integer>();
 
-boolean update;
-static final int GAMESPEED = 5;
-long oldTime = System.currentTimeMillis();
+static final int U = 0;
+static final int D = 1;
+static final int L = 2;
+static final int R = 3;
 
-class Message {
-  static final byte ID_INDEX = 0;
-  static final byte X_INDEX = 1;
-  static final byte Y_INDEX = 2;
-  static final byte DIR_INDEX =1;
+static final int DELAY = 5; 
+
+class Food{
+  public static final int X_INDEX = 1;  
+  public static final int Y_INDEX = 3;
+  public static final int ID_INDEX = 2;
+   int x = 0;
+   int y = 0;
+   Food(int x, int y){
+    this.x = x;
+    this.y = y;
+   }
 }
 
-class Food {
-  static final byte ID_INDEX = 0;
-  static final byte X_INDEX = 1;
-  static final byte Y_INDEX = 2;
-  static final byte PLAYER_SIZE = 3;
+class Type{
+  public static final int FOOD = 1;
+  public static final int SEGMENT = 2;
+  public static final int DIRECTION = 3;  
 }
-
-class Header {
-  static final byte LENGTH = 2;
-  static final byte SIZE_INDEX = 0;
-  static final byte TYPE_INDEX = 1;
+class Segment {
+ int x;
+ int y;
+ Segment(int x, int y){
+  this.x = x;
+  this.y = y;
+ }
 }
-
-class Type {
-  static final byte JOIN = 8;
-  static final byte END = 6;
-  static final byte UPDATE = 1;
-  static final byte DIRECTION = 2;
-  static final byte FOOD = 3;
-  static final byte POSITION = 5;
-}
-
-static int clientCount = 0;
 
 //SERVER
 Server myServer;
@@ -45,10 +39,7 @@ int count = 0;
 int foodX = ((int)random(50)*10);
 int foodY = ((int)random(50)*10);
 
-static final int U = 0;
-static final int D = 1;
-static final int L = 2;
-static final int R = 3;
+
 void setup() {
   size(500, 500);
   myServer = new Server(this, 5204);
@@ -69,32 +60,8 @@ void drawFood() {
 }
 
 
-void drawSnakes() {
-  for (ArrayList<Thing> s : snakes.values()) {
-    fill(255, 115, 0);
-    for (Thing t : s)
-      rect(t.x, t.y, 10, 10);
-  }
-}
 
-byte[] readHeader(Client thisClient) {
-  byte[] header = new byte[Header.LENGTH]; 
-  thisClient.readBytes(header);
-  return header;
-}
 
-void updateDirection(Client thisClient, byte[]header) {
-  byte[] message = new byte[header[Header.SIZE_INDEX]];
-  if (thisClient.available() == header[Header.SIZE_INDEX]) {
-    thisClient.readBytes(message);
-    if (message.length > 1) {
-      updateDirection((int)message[0], (int)message[1]);
-    }
-  } else {
-    thisClient.clear();
-    println("ERROR: INVALID MESSAGE SIZE");
-  }
-}
 
 void protocol() {
   Client thisClient = myServer.available();
@@ -175,13 +142,7 @@ void foodUpdate(byte id) {
 
 void move() {
   if (count++%GAMESPEED==0) {
-    oldTime = System.currentTimeMillis();
-    for (int id : snakes.keySet()) { 
-      //println("id:" + id);
-      Thing player = snakes.get(id).get(0);
-      ArrayList<Thing> snake = snakes.get(id);
-      //updatePosition((byte)id);
-
+   
       switch(directions.get(id)) {
       case U:
         snake.add(0, new Thing(player.x, player.y-10, player.id));
@@ -208,46 +169,12 @@ void move() {
     }
   }
 }
-byte [] thingToBytes(ArrayList<Thing> player) {
-  byte[] message = new byte[player.size()*2+1];
-  message[Message.ID_INDEX] = (byte)player.get(0).id;
-  for (int i = 0; i < player.size(); i++) {
-    message[Message.X_INDEX+(i*2)] = (byte)(player.get(i).x/10);
-    message[Message.Y_INDEX + (i*2)] = (byte)(player.get(i).y/10);
-  }
-  return message;
-}
+
 
 void checkFoodCollisions() {
-  for (ArrayList<Thing> list : snakes.values()) {
-    for (Thing p : list) {
-      if (p.x== foodX && p.y == foodY) {
-        foodX = (((int)random(50))*10);
-        foodY = (((int)random(50))*10);
-        snakeSize.put(p.id, snakeSize.get(p.id)+1);
-        foodUpdate((byte)p.id);
-      }
-    }
-  }
+
 }
 
-void checkSnakeCollisions() {
-  for (ArrayList<Thing> list : snakes.values()) {
-    Thing head = list.get(0);
-    for (ArrayList<Thing> snake : snakes.values()) {
-      if (snake != list) {
-        for (Thing p : snake) {
-          if (head.x == p.x && head.y == p.y) {
-            //foodX = (((int)random(50))*10);
-            //foodY = (((int)random(50))*10);
-            snakeSize.put(head.id, 1);
-            foodUpdate((byte)head.id);
-          }
-        }
-      }
-    }
-  }
-}
 
 // ClientEvent message is generated when a client disconnects.
 void disconnectEvent(Client thisClient) {
@@ -258,20 +185,4 @@ void disconnectEvent(Client thisClient) {
   //directions.remove(id);
   //snakeSize.remove(id);
   println(thisClient.ip() + "t has been deleted");
-}
-
-
-void printBytes(byte[] message) {
-  println("length "+message.length);
-  for (int j=0; j<message.length; j++) {
-    System.out.format("%02X ", message[j]);
-  }
-  System.out.println();
-}
-
-void printInts(byte[] message) {
-  for (int j=0; j<message.length; j++) {
-    print( (int)message[j]+" ");
-  }
-  System.out.println();
 }
