@@ -5,7 +5,7 @@ HashMap<Integer, Integer>snakeSize = new HashMap<Integer, Integer>();
 HashMap<String, Integer>ipId= new HashMap<String, Integer>();
 
 boolean update;
-static final int GAMESPEED = 5;
+static final int GAMESPEED = 50;
 long oldTime = System.currentTimeMillis();
 
 class Message {
@@ -35,6 +35,7 @@ class Type {
   static final byte DIRECTION = 2;
   static final byte FOOD = 3;
   static final byte POSITION = 5;
+  static final byte SIZE=9;
 }
 
 static int clientCount = 0;
@@ -83,7 +84,7 @@ byte[] readHeader(Client thisClient) {
   return header;
 }
 
-void updateDirection(Client thisClient, byte[]header) {
+void recieveDirection(Client thisClient, byte[]header) {
   byte[] message = new byte[header[Header.SIZE_INDEX]];
   if (thisClient.available() == header[Header.SIZE_INDEX]) {
     thisClient.readBytes(message);
@@ -103,7 +104,7 @@ void protocol() {
     if (thisClient.available() >0) {
       byte[] header = readHeader(thisClient);
       if (header[Header.TYPE_INDEX] ==Type.DIRECTION ) {
-        updateDirection(thisClient, header);
+        recieveDirection(thisClient, header);
       } else if (header[Header.TYPE_INDEX] ==Type.END ) {
         byte[] message = new byte[header[Header.SIZE_INDEX]];
         thisClient.readBytes(message);
@@ -120,7 +121,19 @@ void protocol() {
 
 void updateDirection(int id, int d) {
   directions.put(id, d);
+  sendDirection(id);
   update = true;
+}
+
+void sendDirection(int id) {
+  byte[]message = new byte[2];
+  message[Message.ID_INDEX] = (byte)id;
+  message[Message.DIR_INDEX] = (byte)(int)directions.get(id);
+  byte[] header = new byte[2];
+  header[Header.SIZE_INDEX] = (byte)message.length;
+  header[Header.TYPE_INDEX] = Type.DIRECTION;
+  myServer.write(header);
+  myServer.write(message);
 }
 
 void serverEvent(Server someServer, Client someClient) {
@@ -157,7 +170,20 @@ void updatePosition(byte id) {
 
   myServer.write(header);
   myServer.write(message);
+  sendDirection(id);
+  sendSize(id);
 }
+void sendSize(int id) {
+  byte[]message = new byte[2];
+  message[Message.ID_INDEX] = (byte)id;
+  message[Message.DIR_INDEX] = (byte)(int)snakeSize.get(id);
+  byte[] header = new byte[2];
+  header[Header.SIZE_INDEX] = (byte)message.length;
+  header[Header.TYPE_INDEX] = Type.SIZE;
+  myServer.write(header);
+  myServer.write(message);
+}
+
 
 void foodUpdate(byte id) {
   byte[] message = new byte[4];

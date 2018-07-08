@@ -5,7 +5,7 @@ HashMap<Integer, ArrayList<Thing>>snakes = new HashMap<Integer, ArrayList<Thing>
 HashMap<Integer, Integer>directions = new HashMap<Integer, Integer>();
 HashMap<Integer, Integer>snakeSize = new HashMap<Integer, Integer>();
 
-static final int GAMESPEED = 5;
+static final int GAMESPEED = 50;
 class Message {
   static final byte ID_INDEX = 0;
   static final byte X_INDEX = 1;
@@ -13,6 +13,14 @@ class Message {
   static final byte DIR_INDEX =1;
 }
 
+class Size{
+  static final byte ID_INDEX = 0;
+  static final byte SIZE_INDEX = 1;
+}
+class Direction {
+  static final byte ID_INDEX = 0;
+  static final byte DIR_INDEX = 1;
+}
 class Food {
   static final byte ID_INDEX = 0;
   static final byte X_INDEX = 1;
@@ -31,6 +39,8 @@ class Type {
   static final byte DIRECTION = 2;
   static final byte FOOD = 3;
   static final byte POSITION = 5;
+    static final byte SIZE=9;
+
 }
 
 Client myClient; 
@@ -57,13 +67,19 @@ void draw() {
   if (myClient.available() > 0) { 
     byte [] header = new byte[2];
     myClient.readBytes(header);
-    println("available:"+ myClient.available() )
+    //println("available:"+ myClient.available() )
 ;    if (myClient.available() >= header[Header.SIZE_INDEX]) {
       byte [] message = new byte[header[Header.SIZE_INDEX]];
       myClient.readBytes(message);
       switch(header[Header.TYPE_INDEX]) {
       case Type.UPDATE:
         updatePosition(message);
+        break;
+      case Type.DIRECTION:
+        updateDirection(message);
+        break;
+      case Type.SIZE:
+        updateSize(message);
         break;
       case Type.JOIN:
         if (myPlayer == null) {
@@ -86,7 +102,7 @@ void draw() {
   }
   if (myPlayer != null) {
     move();
-    drawPlayer();
+    //drawPlayer();
     drawSnakes();
     drawFood();
   }
@@ -102,6 +118,13 @@ void updateFood(byte[] message) {
 
 
 
+void updateDirection(byte[]message) {
+  directions.put((int)message[Direction.ID_INDEX], (int)message[Direction.DIR_INDEX]);
+}
+
+void updateSize(byte[]message) {
+  snakeSize.put((int)message[Size.ID_INDEX], (int)message[Size.SIZE_INDEX]);
+}
 
 void drawFood() {
   fill(255, 115, 255);
@@ -117,10 +140,10 @@ void drawPlayer() {
 void drawSnakes() {
   for (ArrayList<Thing> s : snakes.values()) {
     fill(255, 115, 0);
-    if (s!=tail) {
+   // if (s!=tail) {
       for (Thing t : s) {
         rect(t.x, t.y, 10, 10);
-      }
+     // }
     }
   }
 }
@@ -176,6 +199,7 @@ void move() {
         snake.add(0, new Thing(p.x+10, p.y, p.id));
         break;
       }
+      println("id " +id + " size :"+snakeSize.get(id));
       while (snake.size() > snakeSize.get(id))
         snake.remove(snake.size()-1);
     }
@@ -221,7 +245,7 @@ ArrayList<Thing> createPlayer(byte [] packet) {
   println("creating Player");
   int id = (int)packet[Message.ID_INDEX];
   println("id:"+id);
-  snakeSize.put(id, 10);
+  snakeSize.put(id, 1);
   ArrayList<Thing> newPlayer = new ArrayList<Thing>();
   newPlayer.add(new Thing(packet[Message.X_INDEX]*10, packet[Message.Y_INDEX]*10, (int)packet[Message.ID_INDEX]));
   snakes.put((int)packet[Message.ID_INDEX], newPlayer);
